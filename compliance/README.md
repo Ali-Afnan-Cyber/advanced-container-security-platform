@@ -27,5 +27,5 @@ Built-in Kubernetes namespace-level enforcement.
 |-----------|-------|
 | default | restricted |
 | falco | privileged |
-| monitoring | baseline |
+| monitoring | privilege |
 | falco-talon | baseline |
