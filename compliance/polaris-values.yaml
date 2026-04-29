@@ -1,0 +1,16 @@
+dashboard:
+  enable: true
+  service:
+    type: NodePort
+    nodePort: 30500
+webhook:
+  enable: false
+audit:
+  enable: false
+resources:
+  requests:
+    memory: 64Mi
+    cpu: 50m
+  limits:
+    memory: 128Mi
+    cpu: 100m

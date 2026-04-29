@@ -1,0 +1,48 @@
+driver:
+  kind: modern_ebpf
+
+tty: true
+
+falco:
+  grpc:
+    enabled: true
+  grpc_output:
+    enabled: true
+  rules_files:
+    - /etc/falco/falco_rules.yaml
+    - /etc/falco/custom-rules.yaml
+  http_output:
+    enabled: true
+    url: "http://falco-ml.falco.svc.cluster.local:5000/webhook"
+    insecure: true
+
+falcosidekick:
+  enabled: true
+  webui:
+    enabled: true
+    user: "admin:admin"
+    service:
+      type: NodePort
+      nodePort: 30282
+  config:
+    talon:
+      address: "http://falco-talon.falco-talon.svc.cluster.local:2803"
+      checkcert: false
+
+extraVolumes:
+  - name: custom-rules
+    configMap:
+      name: falco-custom-rules
+
+extraVolumeMounts:
+  - name: custom-rules
+    mountPath: /etc/falco/custom-rules.yaml
+    subPath: custom-rules.yaml
+
+resources:
+  requests:
+    memory: 512Mi
+    cpu: 100m
+  limits:
+    memory: 1024Mi
+    cpu: 500m

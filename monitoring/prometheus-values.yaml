@@ -1,0 +1,42 @@
+alertmanager:
+  enabled: false
+pushgateway:
+  enabled: false
+nodeExporter:
+  enabled: false
+kube-state-metrics:
+  resources:
+    requests:
+      memory: 32Mi
+      cpu: 25m
+    limits:
+      memory: 64Mi
+      cpu: 100m
+server:
+  persistentVolume:
+    enabled: false
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 300m
+  service:
+    type: NodePort
+    nodePort: 30900
+  retention: "24h"
+  global:
+    scrape_interval: 30s
+    evaluation_interval: 30s
+extraScrapeConfigs: |
+  - job_name: falco-ml
+    static_configs:
+      - targets: ['falco-ml.falco.svc.cluster.local:5000']
+    metrics_path: /metrics
+    scrape_interval: 15s
+  - job_name: falco
+    static_configs:
+      - targets: ['falco.falco.svc.cluster.local:8765']
+    metrics_path: /metrics
+    scrape_interval: 30s

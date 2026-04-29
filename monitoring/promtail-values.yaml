@@ -1,0 +1,56 @@
+config:
+  logLevel: warn
+  clients:
+    - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+      timeout: 10s
+      backoff_config:
+        min_period: 500ms
+        max_period: 5m
+        max_retries: 10
+  snippets:
+    pipelineStages:
+      - docker: {}
+    extraScrapeConfigs: |
+      - job_name: kubernetes-audit
+        static_configs:
+          - targets:
+              - localhost
+            labels:
+              job: kubernetes-audit
+              environment: lab
+              __path__: /var/log/kubernetes/audit.log
+        pipeline_stages:
+          - json:
+              expressions:
+                verb: verb
+                username: user.username
+                resource: objectRef.resource
+                namespace: objectRef.namespace
+          - labels:
+              verb:
+              username:
+              resource:
+              namespace:
+          - drop:
+              expression: '.*system:kube-proxy.*'
+          - drop:
+              expression: '.*system:node.*'
+resources:
+  requests:
+    memory: 64Mi
+    cpu: 25m
+  limits:
+    memory: 128Mi
+    cpu: 100m
+extraVolumes:
+  - name: kubernetes-audit
+    hostPath:
+      path: /var/log/kubernetes
+      type: DirectoryOrCreate
+extraVolumeMounts:
+  - name: kubernetes-audit
+    mountPath: /var/log/kubernetes
+    readOnly: true
+tolerations:
+  - effect: NoSchedule
+    operator: Exists

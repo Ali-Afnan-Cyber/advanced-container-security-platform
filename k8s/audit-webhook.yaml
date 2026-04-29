@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Config
+clusters:
+  - name: falco-webhook
+    cluster:
+      server: http://localhost:30007/k8s-audit
+contexts:
+  - name: falco-webhook
+    context:
+      cluster: falco-webhook
+      user: ""
+current-context: falco-webhook

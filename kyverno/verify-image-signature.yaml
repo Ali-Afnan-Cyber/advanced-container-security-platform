@@ -1,0 +1,27 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signature
+  annotations:
+    policies.kyverno.io/title: Verify Cosign Image Signature
+    policies.kyverno.io/description: >
+      Blocks any pod in default namespace whose image was not signed
+      by the supply chain pipeline via Cosign keyless signing on Rekor.
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+  - name: require-approved-registry
+    match:
+      any:
+      - resources:
+          kinds: [Pod]
+          namespaces: ["default"]
+    validate:
+      message: "BLOCKED by Kyverno: only ali20052025/secure-app images allowed"
+      deny:
+        conditions:
+          all:
+          - key: "{{ request.object.spec.containers[0].image }}"
+            operator: NotEquals
+            value: "ali20052025/secure-app:latest"

@@ -1,0 +1,46 @@
+adminUser: admin
+adminPassword: admin
+service:
+  type: NodePort
+  nodePort: 30300
+persistence:
+  enabled: true
+  storageClassName: local-path
+  size: 1Gi
+  accessModes:
+    - ReadWriteOnce
+livenessProbe:
+  initialDelaySeconds: 60
+  timeoutSeconds: 10
+  failureThreshold: 10
+readinessProbe:
+  initialDelaySeconds: 60
+  timeoutSeconds: 10
+  failureThreshold: 10
+resources:
+  requests:
+    memory: 128Mi
+    cpu: 100m
+  limits:
+    memory: 256Mi
+    cpu: 200m
+plugins: []
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-server.monitoring.svc.cluster.local
+        access: proxy
+        isDefault: true
+        uid: prometheus-uid
+      - name: Loki
+        type: loki
+        url: http://loki.monitoring.svc.cluster.local:3100
+        access: proxy
+        isDefault: false
+        uid: loki-uid
+grafana.ini:
+  database:
+    wal: true
