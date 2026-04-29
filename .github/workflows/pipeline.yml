@@ -1,0 +1,192 @@
+name: Container Supply Chain Security Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+ 
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+ 
+env:
+  IMAGE_TAG: ${{ github.sha }}
+  REGISTRY: docker.io
+ 
+jobs:
+  supply-chain-security:
+    runs-on: ubuntu-latest
+ 
+    steps:
+ 
+    - name: Checkout repository
+      uses: actions/checkout@v4
+ 
+    # Derive lowercase image name from the secret at runtime.
+    # Avoids hardcoding the username and avoids the secret-masking
+    # issue (we don't export it as a job output — only use it locally).
+    - name: Set image name
+      id: img
+      run: |
+        USERNAME=$(echo "${{ secrets.DOCKERHUB_USERNAME }}" | tr '[:upper:]' '[:lower:]')
+        IMAGE="${USERNAME}/secure-app"
+        IMAGE_REF="${IMAGE}:${{ env.IMAGE_TAG }}"
+        echo "IMAGE=${IMAGE}"         >> $GITHUB_ENV
+        echo "IMAGE_REF=${IMAGE_REF}" >> $GITHUB_ENV
+        echo "image_ref=${IMAGE_REF}" >> $GITHUB_OUTPUT
+ 
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@v3
+ 
+    - name: Install Syft
+      uses: anchore/sbom-action/download-syft@v0
+ 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+ 
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+ 
+    # ── Build locally (scan before push) ────────────────────────
+    - name: Build Docker Image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        load: true
+        push: false
+        tags: ${{ steps.img.outputs.image_ref }}
+ 
+    # ── Trivy Scan (FAIL on CRITICAL) ────────────────────────────
+    - name: Trivy Scan (Fail on CRITICAL)
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ steps.img.outputs.image_ref }}
+        severity: CRITICAL
+        exit-code: '1'
+        vuln-type: 'os,library'
+ 
+    - name: Trivy JSON Report
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ steps.img.outputs.image_ref }}
+        format: json
+        output: trivy-results.json
+        exit-code: '0'
+ 
+    - name: Upload Trivy Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: trivy-report
+        path: trivy-results.json
+ 
+    # ── Push Image ───────────────────────────────────────────────
+    - name: Push Image
+      id: push
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: |
+          ${{ env.IMAGE_REF }}
+          ${{ env.IMAGE }}:latest
+ 
+    # ── Set full reference with digest ───────────────────────────
+    - name: Set full image reference
+      run: |
+        DIGEST="${{ steps.push.outputs.digest }}"
+        FULL_REF="${{ env.REGISTRY }}/${{ env.IMAGE }}@${DIGEST}"
+        echo "FULL_REF=${FULL_REF}" >> $GITHUB_ENV
+        echo "DIGEST=${DIGEST}"     >> $GITHUB_ENV
+ 
+    # ── Cosign Keyless Sign ──────────────────────────────────────
+    - name: Cosign Sign (Keyless)
+      run: cosign sign --yes "$FULL_REF"
+ 
+    # ── Generate SBOM ────────────────────────────────────────────
+    - name: Generate SBOM
+      run: syft "$FULL_REF" -o spdx-json=sbom.json
+ 
+    # ── Attach SBOM Attestation ──────────────────────────────────
+    - name: Attach SBOM Attestation
+      run: |
+        cosign attest --yes \
+          --predicate sbom.json \
+          --type spdxjson \
+          "$FULL_REF"
+ 
+    # ── Generate Provenance (SLSA L2 equivalent via Cosign) ──────
+    - name: Generate Provenance Predicate
+      run: |
+        cat > provenance.json << EOF
+        {
+          "buildType": "https://github.com/Ali-Afnan-Cyber/container-security-pipeline/.github/workflows/pipeline.yml@refs/heads/main",
+          "builder": {
+            "id": "https://github.com/actions/runner"
+          },
+          "invocation": {
+            "configSource": {
+              "uri": "git+https://github.com/${{ github.repository }}@refs/heads/main",
+              "digest": { "sha1": "${{ github.sha }}" },
+              "entryPoint": ".github/workflows/pipeline.yml"
+            },
+            "parameters": {},
+            "environment": {
+              "github_run_id": "${{ github.run_id }}",
+              "github_run_number": "${{ github.run_number }}",
+              "github_actor": "${{ github.actor }}"
+            }
+          },
+          "metadata": {
+            "buildInvocationId": "${{ github.run_id }}-${{ github.run_attempt }}",
+            "buildStartedOn": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "completeness": {
+              "parameters": true,
+              "environment": true,
+              "materials": true
+            },
+            "reproducible": false
+          },
+          "materials": [
+            {
+              "uri": "git+https://github.com/${{ github.repository }}",
+              "digest": { "sha1": "${{ github.sha }}" }
+            }
+          ]
+        }
+        EOF
+ 
+    # ── Attach Provenance Attestation ─────────────────────────────
+    - name: Attach Provenance Attestation
+      run: |
+        cosign attest --yes \
+          --predicate provenance.json \
+          --type slsaprovenance \
+          "$FULL_REF"
+ 
+    - name: Upload SBOM
+      uses: actions/upload-artifact@v4
+      with:
+        name: sbom
+        path: sbom.json
+ 
+    - name: Upload Provenance
+      uses: actions/upload-artifact@v4
+      with:
+        name: provenance
+        path: provenance.json
+ 
+    # ── Verify Signature ──────────────────────────────────────────
+    - name: Verify Signature (Rekor)
+      run: |
+        cosign verify \
+          --certificate-identity-regexp \
+            "https://github.com/${{ github.repository }}/.github/workflows/.*" \
+          --certificate-oidc-issuer \
+            "https://token.actions.githubusercontent.com" \
+          "$FULL_REF"
