@@ -103,7 +103,7 @@ ls /sys/kernel/btf/vmlinux && echo "BTF present"
 ### Deploy Full Platform
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/container-security-platform
+git clone https://github.com/Ali-Afnan-Cyber/container-security-platform.git
 cd container-security-platform
 chmod +x scripts/install.sh
 ./scripts/install.sh
