@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo-sec
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: falco-response
+  namespace: demo-sec
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: falco-response
+  namespace: demo-sec
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "delete", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: falco-response
+  namespace: demo-sec
+subjects:
+- kind: ServiceAccount
+  name: falco-response
+  namespace: demo-sec
+roleRef:
+  kind: Role
+  apiGroup: rbac.authorization.k8s.io
+  name: falco-response
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: falco-response
+  namespace: demo-sec
+  labels:
+    app: falco-response
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: falco-response
+  template:
+    metadata:
+      labels:
+        app: falco-response
+    spec:
+      serviceAccountName: falco-response
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: response
+        image: ali20052025/falco-response:v1.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5000
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests:
+            memory: 64Mi
+            cpu: 50m
+          limits:
+            memory: 128Mi
+            cpu: 200m
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: falco-response
+  namespace: demo-sec
+spec:
+  selector:
+    app: falco-response
+  type: NodePort
+  ports:
+  - port: 5000
+    targetPort: 5000
+    nodePort: 31001
