@@ -24,7 +24,7 @@ A comprehensive, production-inspired container security platform built on open-s
 
 ## Architecture
 
-![Implementation Architecture](docs/architecture.png)
+![Implementation Architecture](docs/Architecture-final.png)
 
 ---
 
