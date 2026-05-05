@@ -4,16 +4,12 @@ driver:
 tty: true
 
 falco:
-  grpc:
-    enabled: true
-  grpc_output:
-    enabled: true
   rules_files:
     - /etc/falco/falco_rules.yaml
     - /etc/falco/custom-rules.yaml
   http_output:
     enabled: true
-    url: "http://falco-ml.falco.svc.cluster.local:5000/webhook"
+    url: "http://falco-falcosidekick.falco.svc.cluster.local:2801"
     insecure: true
 
 falcosidekick:
@@ -25,19 +21,19 @@ falcosidekick:
       type: NodePort
       nodePort: 30282
   config:
-    talon:
-      address: "http://falco-talon.falco-talon.svc.cluster.local:2803"
+    webhook:
+      address: "http://falco-response.demo-sec.svc.cluster.local:5000/falco"
       checkcert: false
 
-extraVolumes:
-  - name: custom-rules
-    configMap:
-      name: falco-custom-rules
-
-extraVolumeMounts:
-  - name: custom-rules
-    mountPath: /etc/falco/custom-rules.yaml
-    subPath: custom-rules.yaml
+mounts:
+  volumes:
+    - name: custom-rules
+      configMap:
+        name: falco-custom-rules
+  volumeMounts:
+    - name: custom-rules
+      mountPath: /etc/falco/custom-rules.yaml
+      subPath: custom-rules.yaml
 
 resources:
   requests:
