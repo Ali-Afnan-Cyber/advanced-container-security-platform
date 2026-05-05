@@ -1,81 +1,3 @@
-- rule: "Container Namespace Escape via setns"
-  desc: "setns() called inside container — namespace boundary crossing attempt"
-  condition: >
-    evt.type = setns
-    and container.id != host
-    and not proc.name in (runc, containerd, dockerd, k3s)
-  output: >
-    CRITICAL namespace escape via setns
-    (proc=%proc.name pid=%proc.pid container=%container.name
-    image=%container.image.repository args=%evt.args)
-  priority: CRITICAL
-  tags: [container, namespace_escape, T1611]
-
-- rule: "Namespace Manipulation via unshare"
-  desc: "unshare() called inside container — namespace manipulation"
-  condition: >
-    evt.type = unshare
-    and container.id != host
-    and not proc.name in (runc, containerd)
-  output: >
-    CRITICAL namespace manipulation via unshare
-    (proc=%proc.name pid=%proc.pid container=%container.name
-    image=%container.image.repository)
-  priority: CRITICAL
-  tags: [container, namespace_escape, T1611]
-
-- rule: "Filesystem Escape via mount syscall"
-  desc: "mount() called inside container — possible filesystem escape"
-  condition: >
-    evt.type = mount
-    and container.id != host
-    and not proc.name in (runc, containerd, k3s, systemd)
-  output: >
-    CRITICAL mount() inside container — filesystem escape attempt
-    (proc=%proc.name pid=%proc.pid container=%container.name
-    image=%container.image.repository args=%evt.args)
-  priority: CRITICAL
-  tags: [container, fs_escape, T1611]
-
-- rule: "Container Breakout via pivot_root"
-  desc: "pivot_root() inside container — direct breakout indicator"
-  condition: >
-    evt.type = pivot_root
-    and container.id != host
-  output: >
-    CRITICAL pivot_root inside container — breakout attempt
-    (proc=%proc.name pid=%proc.pid container=%container.name
-    image=%container.image.repository)
-  priority: CRITICAL
-  tags: [container, breakout, T1611]
-
-- rule: "Privilege Escalation via setuid or setgid"
-  desc: "setuid() or setgid() to root inside container"
-  condition: >
-    evt.type in (setuid, setgid)
-    and container.id != host
-    and evt.arg.uid = 0
-    and not proc.name in (runc, su, sudo, containerd)
-  output: >
-    WARNING setuid/setgid to root inside container
-    (proc=%proc.name pid=%proc.pid uid=%user.uid
-    container=%container.name image=%container.image.repository)
-  priority: WARNING
-  tags: [container, privilege_escalation, T1548]
-
-- rule: "Capability Escalation via capset"
-  desc: "capset() inside container — capability modification"
-  condition: >
-    evt.type = capset
-    and container.id != host
-    and not proc.name in (runc, containerd, dockerd, k3s, ping)
-  output: >
-    WARNING capset() inside container
-    (proc=%proc.name pid=%proc.pid container=%container.name
-    image=%container.image.repository caps=%evt.args)
-  priority: WARNING
-  tags: [container, capability_escalation, T1548]
-
 - rule: "Shell Spawned Inside Container"
   desc: "Interactive shell spawned inside running container"
   condition: >
@@ -83,6 +5,8 @@
     and container.id != host
     and proc.name in (bash, sh, dash, zsh, ksh, fish)
     and not proc.pname in (sh, bash, containerd, runc, k3s)
+    and not proc.name startswith "runc:"
+    and k8s.ns.name = demo-sec
   output: >
     WARNING shell spawned in container
     (shell=%proc.name pid=%proc.pid parent=%proc.pname
@@ -92,7 +16,7 @@
   tags: [container, shell_spawn, T1059]
 
 - rule: "Sensitive File Access in Container"
-  desc: "Sensitive file opened inside container — credential theft indicator"
+  desc: "Sensitive file opened inside container"
   condition: >
     evt.type in (open, openat)
     and container.id != host
@@ -100,9 +24,10 @@
       fd.name in (/etc/shadow, /etc/passwd, /etc/sudoers)
       or fd.name startswith /root/.ssh
       or fd.name = /var/run/docker.sock
-      or fd.name startswith /proc/1/
     )
-    and not proc.name in (falco, k3s, containerd)
+    and not proc.name in (falco, k3s, containerd, coredns, prometheus)
+    and not proc.name startswith "runc:"
+    and k8s.ns.name = demo-sec
   output: >
     WARNING sensitive file access in container
     (proc=%proc.name pid=%proc.pid file=%fd.name
@@ -110,11 +35,102 @@
   priority: WARNING
   tags: [container, sensitive_file, T1552]
 
+- rule: "Filesystem Escape via mount syscall"
+  desc: "mount() called inside container"
+  condition: >
+    evt.type = mount
+    and container.id != host
+    and not proc.name in (runc, containerd, k3s, systemd)
+    and not proc.name startswith "runc:"
+    and k8s.ns.name = demo-sec
+  output: >
+    CRITICAL mount inside container
+    (proc=%proc.name pid=%proc.pid container=%container.name
+    image=%container.image.repository)
+  priority: CRITICAL
+  tags: [container, fs_escape, T1611]
+
+- rule: "Container Namespace Escape via setns"
+  desc: "setns() called inside container"
+  condition: >
+    evt.type = setns
+    and container.id != host
+    and not proc.name in (runc, containerd, dockerd, k3s)
+    and not proc.name startswith "runc:"
+    and k8s.ns.name = demo-sec
+  output: >
+    CRITICAL namespace escape via setns
+    (proc=%proc.name pid=%proc.pid container=%container.name
+    image=%container.image.repository)
+  priority: CRITICAL
+  tags: [container, namespace_escape, T1611]
+
+- rule: "Namespace Manipulation via unshare"
+  desc: "unshare() called inside container"
+  condition: >
+    evt.type = unshare
+    and container.id != host
+    and not proc.name in (runc, containerd)
+    and not proc.name startswith "runc:"
+    and k8s.ns.name = demo-sec
+  output: >
+    CRITICAL namespace manipulation via unshare
+    (proc=%proc.name pid=%proc.pid container=%container.name
+    image=%container.image.repository)
+  priority: CRITICAL
+  tags: [container, namespace_escape, T1611]
+
+- rule: "Container Breakout via pivot_root"
+  desc: "pivot_root() inside container"
+  condition: >
+    evt.type = pivot_root
+    and container.id != host
+    and not proc.name startswith "runc:"
+    and k8s.ns.name = demo-sec
+  output: >
+    CRITICAL pivot_root inside container
+    (proc=%proc.name pid=%proc.pid container=%container.name
+    image=%container.image.repository)
+  priority: CRITICAL
+  tags: [container, breakout, T1611]
+
+- rule: "Privilege Escalation via setuid or setgid"
+  desc: "setuid/setgid to root inside container"
+  condition: >
+    evt.type in (setuid, setgid)
+    and container.id != host
+    and evt.arg.uid = 0
+    and not proc.name in (runc, su, sudo, containerd)
+    and not proc.name startswith "runc:"
+    and k8s.ns.name = demo-sec
+  output: >
+    WARNING setuid/setgid to root
+    (proc=%proc.name pid=%proc.pid container=%container.name
+    image=%container.image.repository)
+  priority: WARNING
+  tags: [container, privilege_escalation, T1548]
+
+- rule: "Capability Escalation via capset"
+  desc: "capset() inside container"
+  condition: >
+    evt.type = capset
+    and container.id != host
+    and not proc.name in (runc, containerd, dockerd, k3s, ping)
+    and not proc.name startswith "runc:"
+    and k8s.ns.name = demo-sec
+  output: >
+    WARNING capset inside container
+    (proc=%proc.name pid=%proc.pid container=%container.name
+    image=%container.image.repository)
+  priority: WARNING
+  tags: [container, capability_escalation, T1548]
+
 - rule: "Privileged Pod Created"
   desc: "Pod created with privileged/hostPID/hostNetwork flag"
   condition: >
     ka.verb in (create, update, patch)
     and ka.target.resource = pods
+    and ka.target.namespace = demo-sec
     and (
       ka.request.object contains "\"privileged\":true"
       or ka.request.object contains "\"hostPID\":true"
@@ -123,33 +139,33 @@
   output: >
     CRITICAL privileged pod created
     (user=%ka.user.name pod=%ka.target.name
-    namespace=%ka.target.namespace verb=%ka.verb)
+    namespace=%ka.target.namespace)
   priority: CRITICAL
   source: k8s_audit
   tags: [k8s_audit, privileged_pod, T1610]
 
 - rule: "kubectl exec into Pod"
-  desc: "kubectl exec or attach into a running pod detected"
+  desc: "kubectl exec or attach into pod"
   condition: >
     ka.verb = create
     and ka.target.resource in (pods/exec, pods/attach)
+    and ka.target.namespace = demo-sec
   output: >
-    WARNING kubectl exec/attach detected
+    WARNING kubectl exec detected
     (user=%ka.user.name pod=%ka.target.name
-    namespace=%ka.target.namespace uri=%ka.uri)
+    namespace=%ka.target.namespace)
   priority: WARNING
   source: k8s_audit
   tags: [k8s_audit, kubectl_exec, T1609]
 
 - rule: "ClusterRoleBinding Created"
-  desc: "New ClusterRoleBinding created — RBAC escalation risk"
+  desc: "New ClusterRoleBinding created"
   condition: >
     ka.verb = create
     and ka.target.resource = clusterrolebindings
   output: >
     CRITICAL ClusterRoleBinding created
-    (user=%ka.user.name binding=%ka.target.name
-    namespace=%ka.target.namespace)
+    (user=%ka.user.name binding=%ka.target.name)
   priority: CRITICAL
   source: k8s_audit
   tags: [k8s_audit, rbac_escalation, T1078]
