@@ -152,6 +152,3 @@ This layer is designed to catch patterns that rule-based detection misses: low-a
 
 **Ali Afnan** · EduQual Level 6 · Diploma in AI Operations
 
----
-
-## Repository Structure
