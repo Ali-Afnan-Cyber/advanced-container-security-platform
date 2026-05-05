@@ -13,7 +13,7 @@ spec:
       any:
       - resources:
           kinds: [Pod]
-          namespaces: ["default"]
+          namespaces: ["default", "demo-sec"]
     validate:
       message: "BLOCKED by Kyverno: CPU and memory limits required"
       pattern:
