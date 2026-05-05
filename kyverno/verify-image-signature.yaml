@@ -5,7 +5,7 @@ metadata:
   annotations:
     policies.kyverno.io/title: Verify Cosign Image Signature
     policies.kyverno.io/description: >
-      Blocks any pod in default namespace whose image was not signed
+      Blocks any pod in default & demo-sec namespace whose image was not signed
       by the supply chain pipeline via Cosign keyless signing on Rekor.
 spec:
   validationFailureAction: Enforce
@@ -16,7 +16,7 @@ spec:
       any:
       - resources:
           kinds: [Pod]
-          namespaces: ["default"]
+          namespaces: ["default", "demo-sec"]
     validate:
       message: "BLOCKED by Kyverno: only ali20052025/secure-app images allowed"
       deny:
