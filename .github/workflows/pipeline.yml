@@ -6,12 +6,14 @@ on:
       - main
     paths:
       - "app/**"
+      - ".github/workflows/pipeline.yml"
 
   pull_request:
     branches:
       - main
     paths:
       - "app/**"
+      - ".github/workflows/pipeline.yml"
 
 permissions:
   contents: read
