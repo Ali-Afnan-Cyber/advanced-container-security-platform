@@ -60,9 +60,21 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
+        file: ./app/Dockerfile
         load: true
         push: false
+        no-cache: true
         tags: ${{ steps.img.outputs.image_ref }}
+
+    - name: Inspect Built Image
+      run: |
+        docker image inspect ${{ steps.img.outputs.image_ref }}
+
+    - name: Check Base OS
+      run: |
+        docker run --rm --entrypoint cat \
+          ${{ steps.img.outputs.image_ref }} \
+          /etc/os-release || true
 
     - name: Trivy Scan (Fail on CRITICAL)
       uses: aquasecurity/trivy-action@master
@@ -92,7 +104,9 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
+        file: ./app/Dockerfile
         push: true
+        no-cache: true
         tags: |
           ${{ env.IMAGE_REF }}
           ${{ env.IMAGE }}:latest
