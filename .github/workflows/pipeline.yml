@@ -2,9 +2,16 @@ name: Container Supply Chain Security Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+    paths:
+      - "app/**"
+
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+    paths:
+      - "app/**"
 
 permissions:
   contents: read
