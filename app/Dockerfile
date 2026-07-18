@@ -1,10 +1,5 @@
-# =================================================================
-# FIXED Dockerfile — hardened, minimal, non-root
-# Passes Trivy scan with zero CRITICAL CVEs
-# =================================================================
- 
 # Stage 1: Builder — install dependencies
-FROM python:3.12-slim AS builder
+FROM python:3.12.11-slim AS builder
 # ^ python:3.12-slim: actively maintained, patched, minimal Debian
  
 WORKDIR /app
@@ -17,7 +12,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
  
 # Stage 2: Runtime — minimal final image
-FROM python:3.12-slim
+FROM python:3.12.11-slim
  
 # Security: Create non-root user
 RUN groupadd -r appgroup && useradd -r -g appgroup -s /bin/false appuser
