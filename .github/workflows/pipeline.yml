@@ -85,7 +85,7 @@ jobs:
         severity: CRITICAL
         exit-code: '1'
         vuln-type: 'os,library'
-        ignore-unfixed: true '
+        ignore-unfixed: true 
 
     - name: Trivy JSON Report
       uses: aquasecurity/trivy-action@master
