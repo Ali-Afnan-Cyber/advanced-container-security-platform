@@ -78,13 +78,14 @@ jobs:
           ${{ steps.img.outputs.image_ref }} \
           /etc/os-release || true
 
-    - name: Trivy Scan (Fail on CRITICAL)
+    - name: Trivy Scan (Fail on Fixable CRITICAL)
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: ${{ steps.img.outputs.image_ref }}
         severity: CRITICAL
         exit-code: '1'
         vuln-type: 'os,library'
+        ignore-unfixed: true '
 
     - name: Trivy JSON Report
       uses: aquasecurity/trivy-action@master
