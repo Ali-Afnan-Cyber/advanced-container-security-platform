@@ -35,7 +35,3 @@ There's no strict dependency between these five documents, but a reasonable orde
 3. `backup-recovery.md`  the data-durability gap that HA alone doesn't solve.
 4. `secrets-management.md`  an orthogonal but equally concrete gap in current secrets hygiene.
 5. `monitoring-alerting.md`  the observability stack exists (`../design-decisions/06-observability-stack.md`), but the last-mile "tell a human" step does not.
-
-## Source of Truth
-
-These documents describe the platform as implemented and defended in the EduQual Level 6 oral examination (Topic 98: Advanced Container Security Platform), corresponding to `Ali-Afnan-Cyber/container-security-platform`. Every gap named here is a known, deliberately scoped limitation of the current single-node iteration  not a discovered defect.
