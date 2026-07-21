@@ -117,3 +117,16 @@ Each run produces the following, uploaded as GitHub Actions artifacts:
 - Add a scheduled (non-push-triggered) scan to catch newly disclosed CVEs in already-published images.
 - Persist Trivy JSON reports outside of workflow artifacts (e.g. to a central dashboard) for trend tracking rather than per-run snapshots.
 - Re-evaluate `ignore-unfixed` periodically — it should be revisited whenever the base image is updated, not left permanent.
+
+---
+
+# Supply Chain Architecture
+
+The following architecture illustrates the complete software supply chain implemented by this GitHub Actions workflow.
+
+<p align="center">
+  <img
+    src="../../assets/diagrams/Supplychaincomplete.png"
+    alt="Container Supply Chain Security Architecture"
+    width="1100">
+</p>
