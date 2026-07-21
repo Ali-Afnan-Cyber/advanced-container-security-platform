@@ -1,6 +1,9 @@
 # Demo Application
 
-Hardened Flask application used to demonstrate the supply chain pipeline.
+A hardened **Flask** application used to demonstrate the **Software Supply Chain Security** component of the **Advanced Container Security Platform**.
+
+Rather than focusing on application features, this repository demonstrates how a container image can be securely built, scanned, signed, attested, and verified before it is trusted for deployment into Kubernetes.
+
 
 ## Security Properties
 
@@ -49,3 +52,9 @@ Syft SBOM → cosign attest
 SLSA provenance → cosign attest
 ↓
 Cosign verify → confirm Rekor entry
+
+---
+
+## **Looking for the Software Supply Chain implementation?**
+
+See **[Container Supply Chain Security Pipeline](../.github/workflows/README.md)** for the complete CI/CD security workflow including Trivy, Cosign, Syft, Rekor and SLSA provenance.
