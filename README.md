@@ -26,7 +26,7 @@ The core philosophy: trust nothing by default, verify everything at every stage,
 
 ## Architecture
 
-![Implementation Architecture](docs/Architecture-final.png)
+![Implementation Architecture](assets/diagrams/main-architecture-diagram.jpeg)
 
 The platform is structured around four phases:
 
